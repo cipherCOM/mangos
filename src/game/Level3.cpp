@@ -54,6 +54,7 @@
 #include "InstanceData.h"
 #include "DBCStores.h"
 #include "CreatureEventAIMgr.h"
+#include "EventPlayerDeathStateMgr.h"
 
 //reload commands
 bool ChatHandler::HandleReloadAllCommand(char* /*args*/)
@@ -3312,7 +3313,7 @@ bool ChatHandler::HandleDieCommand(char* /*args*/)
 
     if (target->isAlive())
     {
-        m_session->GetPlayer()->DealDamage(target, target->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+        m_session->GetPlayer()->DealDamage(target, target->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false, REASON_COMMAND);
     }
 
     return true;
@@ -3347,7 +3348,7 @@ bool ChatHandler::HandleDamageCommand(char* args)
     // flat melee damage without resistence/etc reduction
     if (!*args)
     {
-        m_session->GetPlayer()->DealDamage(target, damage, NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+        m_session->GetPlayer()->DealDamage(target, damage, NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false, REASON_COMMAND);
         if (target != m_session->GetPlayer())
             m_session->GetPlayer()->SendAttackStateUpdate (HITINFO_NORMALSWING2, target, 1, SPELL_SCHOOL_MASK_NORMAL, damage, 0, 0, VICTIMSTATE_NORMAL, 0);
         return true;
@@ -3379,7 +3380,7 @@ bool ChatHandler::HandleDamageCommand(char* args)
         damage -= absorb + resist;
 
         m_session->GetPlayer()->DealDamageMods(target,damage,&absorb);
-        m_session->GetPlayer()->DealDamage(target, damage, NULL, DIRECT_DAMAGE, schoolmask, NULL, false);
+        m_session->GetPlayer()->DealDamage(target, damage, NULL, DIRECT_DAMAGE, schoolmask, NULL, false, REASON_COMMAND);
         m_session->GetPlayer()->SendAttackStateUpdate (HITINFO_NORMALSWING2, target, 1, schoolmask, damage, absorb, resist, VICTIMSTATE_NORMAL, 0);
         return true;
     }
@@ -3428,6 +3429,8 @@ bool ChatHandler::HandleReviveCommand(char* args)
     {
         target->ResurrectPlayer(0.5f);
         target->SpawnCorpseBones();
+        sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerRevive(*target, REVIVE_COMMAND),
+                                                                    &EventListenerPlayerDeathState::EventPlayerRevived);
     }
     else
         // will resurrected at login without corpse

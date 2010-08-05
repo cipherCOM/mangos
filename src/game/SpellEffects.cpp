@@ -52,6 +52,8 @@
 #include "Util.h"
 #include "TemporarySummon.h"
 #include "ScriptMgr.h"
+#include "EventPlayerMoveMgr.h"
+#include "EventPlayerDeathStateMgr.h"
 
 pEffect SpellEffects[TOTAL_SPELL_EFFECTS]=
 {
@@ -284,7 +286,7 @@ void Spell::EffectInstaKill(SpellEffectIndex /*eff_idx*/)
     data << uint32(m_spellInfo->Id);
     m_caster->SendMessageToSet(&data, true);
 
-    m_caster->DealDamage(unitTarget, unitTarget->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+    m_caster->DealDamage(unitTarget, unitTarget->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false, REASON_SPELL);
 }
 
 void Spell::EffectEnvironmentalDMG(SpellEffectIndex eff_idx)
@@ -2177,6 +2179,9 @@ void Spell::EffectTeleportUnits(SpellEffectIndex eff_idx)
                 unitTarget->NearTeleportTo(st->target_X,st->target_Y,st->target_Z,st->target_Orientation,unitTarget==m_caster);
             else if(unitTarget->GetTypeId()==TYPEID_PLAYER)
                 ((Player*)unitTarget)->TeleportTo(st->target_mapId,st->target_X,st->target_Y,st->target_Z,st->target_Orientation,unitTarget==m_caster ? TELE_TO_SPELL : 0);
+            if(unitTarget->GetTypeId() == TYPEID_PLAYER)
+                sEventSystemMgr(EventListenerPlayerMove).TriggerEvent(EventInfoPlayerMoveTeleported(*(Player*)unitTarget, TELE_SPELL, this),
+                                                                      &EventListenerPlayerMove::EventPlayerTeleported);
             break;
         }
         case TARGET_EFFECT_SELECT:
@@ -2210,6 +2215,9 @@ void Spell::EffectTeleportUnits(SpellEffectIndex eff_idx)
             float z = m_targets.m_destZ;
             float orientation = pTarget ? pTarget->GetOrientation() : unitTarget->GetOrientation();
             unitTarget->NearTeleportTo(x,y,z,orientation,unitTarget==m_caster);
+            if(unitTarget->GetTypeId() == TYPEID_PLAYER)
+                sEventSystemMgr(EventListenerPlayerMove).TriggerEvent(EventInfoPlayerMoveTeleported(*(Player*)unitTarget, TELE_SPELL, this),
+                                                                      &EventListenerPlayerMove::EventPlayerTeleported);
             return;
         }
         default:
@@ -2227,6 +2235,9 @@ void Spell::EffectTeleportUnits(SpellEffectIndex eff_idx)
             float orientation = unitTarget->GetOrientation();
             // Teleport
             unitTarget->NearTeleportTo(x,y,z,orientation,unitTarget==m_caster);
+            if(unitTarget->GetTypeId() == TYPEID_PLAYER)
+                sEventSystemMgr(EventListenerPlayerMove).TriggerEvent(EventInfoPlayerMoveTeleported(*(Player*)unitTarget, TELE_SPELL_UNKNOWN, this),
+                                                                      &EventListenerPlayerMove::EventPlayerTeleported);
             return;
         }
     }
@@ -3661,6 +3672,9 @@ void Spell::EffectTeleUnitsFaceCaster(SpellEffectIndex eff_idx)
     m_caster->GetClosePoint(fx, fy, fz, unitTarget->GetObjectBoundingRadius(), dis);
 
     unitTarget->NearTeleportTo(fx, fy, fz, -m_caster->GetOrientation(), unitTarget==m_caster);
+    if(unitTarget->GetTypeId() == TYPEID_PLAYER)
+        sEventSystemMgr(EventListenerPlayerMove).TriggerEvent(EventInfoPlayerMoveTeleported(*(Player*)unitTarget, TELE_SPELL_UNKNOWN, this),
+                                                              &EventListenerPlayerMove::EventPlayerTeleported);
 }
 
 void Spell::EffectLearnSkill(SpellEffectIndex eff_idx)
@@ -5185,6 +5199,8 @@ void Spell::EffectStuck(SpellEffectIndex /*eff_idx*/)
 
     // homebind location is loaded always
     pTarget->TeleportToHomebind(unitTarget==m_caster ? TELE_TO_SPELL : 0);
+    sEventSystemMgr(EventListenerPlayerMove).TriggerEvent(EventInfoPlayerMoveTeleported(*pTarget, TELE_UNSTUCK, this),
+                                                          &EventListenerPlayerMove::EventPlayerTeleported);
 
     // Stuck spell trigger Hearthstone cooldown
     SpellEntry const *spellInfo = sSpellStore.LookupEntry(8690);
@@ -5576,6 +5592,9 @@ void Spell::EffectLeapForward(SpellEffectIndex eff_idx)
         }
 
         unitTarget->NearTeleportTo(fx, fy, fz, unitTarget->GetOrientation(), unitTarget == m_caster);
+        if(unitTarget->GetTypeId() == TYPEID_PLAYER)
+            sEventSystemMgr(EventListenerPlayerMove).TriggerEvent(EventInfoPlayerMoveTeleported(*(Player*)unitTarget, TELE_LEAP, this),
+                                                                  &EventListenerPlayerMove::EventPlayerTeleported);
     }
 }
 
@@ -5651,6 +5670,9 @@ void Spell::EffectSelfResurrect(SpellEffectIndex eff_idx)
     plr->SetPower(POWER_ENERGY, plr->GetMaxPower(POWER_ENERGY) );
 
     plr->SpawnCorpseBones();
+
+    sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerRevive(*plr, REVIVE_SPELL),
+                                                                &EventListenerPlayerDeathState::EventPlayerRevived);
 }
 
 void Spell::EffectSkinning(SpellEffectIndex /*eff_idx*/)
@@ -6112,6 +6134,9 @@ void Spell::EffectSpiritHeal(SpellEffectIndex /*eff_idx*/)
 
     ((Player*)unitTarget)->ResurrectPlayer(1.0f);
     ((Player*)unitTarget)->SpawnCorpseBones();
+
+    sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerRevive(*(Player*)unitTarget, REVIVE_BATTLEGROUND),
+                                                                &EventListenerPlayerDeathState::EventPlayerRevived);
 }
 
 // remove insignia spell effect

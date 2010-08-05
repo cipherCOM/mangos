@@ -45,6 +45,8 @@
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
+#include "EventCreatureMgr.h"
+#include "EventBossMgr.h"
 
 // apply implementation of the singletons
 #include "Policies/SingletonImp.h"
@@ -1438,6 +1440,22 @@ float Creature::GetAttackDistance(Unit const* pl) const
 
 void Creature::SetDeathState(DeathState s)
 {
+    if (s == JUST_DIED)
+    {
+        sEventSystemMgr(EventListenerCreature).TriggerEvent(EventInfoCreature(*this),
+                                                            &EventListenerCreature::EventCreatureDied);
+        if (GetCreatureInfo()->rank == 3)
+        { // Creature is a World Boss
+            sEventSystemMgr(EventListenerBoss).TriggerEvent(EventInfoBoss(*this),
+                                                                &EventListenerBoss::EventBossDied);
+        }
+    }
+    else if (s == JUST_ALIVED)
+    {
+        sEventSystemMgr(EventListenerCreature).TriggerEvent(EventInfoCreature(*this),
+                                                            &EventListenerCreature::EventCreatureSpawned);
+    }
+
     if ((s == JUST_DIED && !m_isDeadByDefault) || (s == JUST_ALIVED && m_isDeadByDefault))
     {
         m_corpseDecayTimer = m_corpseDelay*IN_MILLISECONDS; // the max/default time for corpse decay (before creature is looted/AllLootRemovedFromCorpse() is called)

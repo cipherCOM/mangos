@@ -33,6 +33,7 @@
 #include "Player.h"
 #include "World.h"
 #include "BattleGroundMgr.h"
+#include "EventPlayerTradeMgr.h"
 
 /**
  * Creates a new MailSender object.
@@ -353,6 +354,14 @@ void MailDraft::SendMailTo(MailReceiver const& receiver, MailSender const& sende
     }
     else if (!m_items.empty())
         deleteIncludedItems();
+
+    // Check if a player send this mail
+    ObjectGuid playerGuid = ObjectGuid(HIGHGUID_PLAYER, sender.GetSenderId());
+    Player *pl = sObjectMgr.GetPlayer(playerGuid);
+    if (pl && pl->GetTypeId() == TYPEID_PLAYER) {
+        sEventSystemMgr(EventListenerPlayerTrade).TriggerEvent(EventInfoPlayerTradeMail(*pl, *this, receiver.GetPlayerGuid()),
+                                                               &EventListenerPlayerTrade::EventPlayerMailSend);
+    }
 }
 
 /**

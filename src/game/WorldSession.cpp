@@ -36,6 +36,8 @@
 #include "BattleGroundMgr.h"
 #include "MapManager.h"
 #include "SocialMgr.h"
+#include "EventCharacterMgr.h"
+#include "EventPlayerDeathStateMgr.h"
 
 // select opcodes appropriate for processing in Map::Update context for current session state
 static bool MapSessionFilterHelper(WorldSession* session, OpcodeHandler const& opHandle)
@@ -333,6 +335,9 @@ void WorldSession::LogoutPlayer(bool Save)
     if (_player)
     {
         sLog.outChar("Account: %d (IP: %s) Logout Character:[%s] (guid: %u)", GetAccountId(), GetRemoteAddress().c_str(), _player->GetName() ,_player->GetGUIDLow());
+        sEventSystemMgr(EventListenerCharacter).TriggerEvent(EventInfoCharacter(_player->GetGUIDLow(), _player->GetName(),
+                                                                                GetAccountId(), GetRemoteAddress()),
+                                                             &EventListenerCharacter::EventCharacterLogout);
 
         if (ObjectGuid lootGuid = GetPlayer()->GetLootGuid())
             DoLootRelease(lootGuid);
@@ -380,6 +385,9 @@ void WorldSession::LogoutPlayer(bool Save)
             if(!aset.empty())
                 if(BattleGround *bg = _player->GetBattleGround())
                     bg->HandleKillPlayer(_player,*aset.begin());
+
+            sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerDeath(*_player, REASON_OTHER),
+                                                                        &EventListenerPlayerDeathState::EventPlayerDied);
         }
         else if(_player->HasAuraType(SPELL_AURA_SPIRIT_OF_REDEMPTION))
         {
@@ -389,6 +397,9 @@ void WorldSession::LogoutPlayer(bool Save)
             _player->KillPlayer();
             _player->BuildPlayerRepop();
             _player->RepopAtGraveyard();
+
+            sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerDeath(*_player, REASON_OTHER),
+                                                                        &EventListenerPlayerDeathState::EventPlayerDied);
         }
         //drop a flag if player is carrying it
         if(BattleGround *bg = _player->GetBattleGround())

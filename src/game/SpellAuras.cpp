@@ -1204,7 +1204,7 @@ void Aura::TriggerSpell()
                     case 31347:                             // Doom
                     {
                         target->CastSpell(target,31350,true);
-                        target->DealDamage(target, target->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                        target->DealDamage(target, target->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false, REASON_SPELL);
                         return;
                     }
                     case 31373:                             // Spellcloth
@@ -2058,7 +2058,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             {
                 // Kill target if dispelled
                 if (m_removeMode==AURA_REMOVE_BY_DISPEL)
-                    target->DealDamage(target, target->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                    target->DealDamage(target, target->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false, REASON_SPELL);
                 return;
             }
             case 46308:                                     // Burning Winds
@@ -5613,7 +5613,7 @@ void Aura::HandleSpiritOfRedemption( bool apply, bool Real )
     }
     // die at aura end
     else
-        target->DealDamage(target, target->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, GetSpellProto(), false);
+        target->DealDamage(target, target->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, GetSpellProto(), false, REASON_SPELL);
 }
 
 void Aura::HandleSchoolAbsorb(bool apply, bool Real)
@@ -5804,7 +5804,7 @@ void Aura::PeriodicTick()
 
             pCaster->ProcDamageAndSpell(target, procAttacker, procVictim, PROC_EX_NORMAL_HIT, pdamage, BASE_ATTACK, spellProto);
 
-            pCaster->DealDamage(target, pdamage, &cleanDamage, DOT, GetSpellSchoolMask(spellProto), spellProto, true);
+            pCaster->DealDamage(target, pdamage, &cleanDamage, DOT, GetSpellSchoolMask(spellProto), spellProto, true, REASON_SPELL);
             break;
         }
         case SPELL_AURA_PERIODIC_LEECH:
@@ -5873,7 +5873,7 @@ void Aura::PeriodicTick()
                 procVictim|=PROC_FLAG_TAKEN_ANY_DAMAGE;
 
             pCaster->ProcDamageAndSpell(target, procAttacker, procVictim, PROC_EX_NORMAL_HIT, pdamage, BASE_ATTACK, spellProto);
-            int32 new_damage = pCaster->DealDamage(target, pdamage, &cleanDamage, DOT, GetSpellSchoolMask(spellProto), spellProto, false);
+            int32 new_damage = pCaster->DealDamage(target, pdamage, &cleanDamage, DOT, GetSpellSchoolMask(spellProto), spellProto, false, REASON_SPELL);
 
             if (!target->isAlive() && pCaster->IsNonMeleeSpellCasted(false))
                 for (uint32 i = CURRENT_FIRST_NON_MELEE_SPELL; i < CURRENT_MAX_SPELL; ++i)
@@ -5957,7 +5957,7 @@ void Aura::PeriodicTick()
                     pCaster->SendSpellNonMeleeDamageLog(pCaster, GetId(), damage, GetSpellSchoolMask(spellProto), absorb, 0, false, 0, false);
 
                     CleanDamage cleanDamage =  CleanDamage(0, BASE_ATTACK, MELEE_HIT_NORMAL );
-                    pCaster->DealDamage(pCaster, damage, &cleanDamage, NODAMAGE, GetSpellSchoolMask(spellProto), spellProto, true);
+                    pCaster->DealDamage(pCaster, damage, &cleanDamage, NODAMAGE, GetSpellSchoolMask(spellProto), spellProto, true, REASON_SPELL);
                 }
             }
             break;

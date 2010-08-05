@@ -23,6 +23,7 @@
 #include "World.h"
 #include "Util.h"
 #include "SharedDefines.h"
+#include "EventLootItemMgr.h"
 
 static eConfigFloatValues const qualityToRate[MAX_ITEM_QUALITY] = {
     CONFIG_FLOAT_RATE_DROP_ITEM_POOR,                                    // ITEM_QUALITY_POOR
@@ -428,6 +429,19 @@ void Loot::AddItem(LootStoreItem const & item)
             if (!proto || !(proto->Flags & ITEM_FLAG_PARTY_LOOT))
                 ++unlootedCount;
         }
+    }
+
+    // TODO: Sad that no pointer to other objects exists so only have the item and loot for info
+    const ItemPrototype *itemProt = sObjectMgr.GetItemPrototype(item.itemid);
+    if(itemProt->Quality > ITEM_QUALITY_NORMAL)
+    {
+        sEventSystemMgr(EventListenerLootItem).TriggerEvent(EventInfoLootItem(items.back(), *this),
+                                                            &EventListenerLootItem::EventLootItemColoredDropped);
+    }
+    if(itemProt->Class == ITEM_CLASS_QUEST)
+    {
+        sEventSystemMgr(EventListenerLootItem).TriggerEvent(EventInfoLootItem(items.back(), *this),
+                                                            &EventListenerLootItem::EventLootItemQuestDropped);
     }
 }
 

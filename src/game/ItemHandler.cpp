@@ -26,6 +26,7 @@
 #include "Item.h"
 #include "UpdateData.h"
 #include "Chat.h"
+#include "EventPlayerTradeMgr.h"
 
 void WorldSession::HandleSplitItemOpcode( WorldPacket & recv_data )
 {
@@ -583,6 +584,9 @@ void WorldSession::HandleSellItemOpcode( WorldPacket & recv_data )
                 uint32 money = pProto->SellPrice * count;
 
                 _player->ModifyMoney(money);
+
+                sEventSystemMgr(EventListenerPlayerTrade).TriggerEvent(EventInfoPlayerTradeVendor(*_player, *pCreature, *pItem, count),
+                                                                       &EventListenerPlayerTrade::EventPlayerVendorTraded);
             }
             else
                 _player->SendSellError(SELL_ERR_CANT_SELL_ITEM, pCreature, itemGuid, 0);

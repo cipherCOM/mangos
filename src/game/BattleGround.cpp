@@ -33,6 +33,9 @@
 #include "Util.h"
 #include "Formulas.h"
 #include "GridNotifiersImpl.h"
+#include "EventBattleGroundMgr.h"
+#include "EventPlayerDeathStateMgr.h"
+#include "EventPlayerBattleGroundMgr.h"
 
 namespace MaNGOS
 {
@@ -671,8 +674,8 @@ void BattleGround::EndBattleGround(Team winner)
 
     ArenaTeam * winner_arena_team = NULL;
     ArenaTeam * loser_arena_team = NULL;
-    uint32 loser_rating = 0;
-    uint32 winner_rating = 0;
+    uint32 loser_rating = 0, loser_change = 0;
+    uint32 winner_rating = 0, winner_change = 0;
     WorldPacket data;
     int32 winmsg_id = 0;
 
@@ -710,8 +713,8 @@ void BattleGround::EndBattleGround(Team winner)
         {
             loser_rating = loser_arena_team->GetStats().rating;
             winner_rating = winner_arena_team->GetStats().rating;
-            int32 winner_change = winner_arena_team->WonAgainst(loser_rating);
-            int32 loser_change = loser_arena_team->LostAgainst(winner_rating);
+            winner_change = winner_arena_team->WonAgainst(loser_rating);
+            loser_change = loser_arena_team->LostAgainst(winner_rating);
             DEBUG_LOG("--- Winner rating: %u, Loser rating: %u, Winner change: %i, Loser change: %i ---", winner_rating, loser_rating, winner_change, loser_change);
             SetArenaTeamRatingChangeForTeam(winner, winner_change);
             SetArenaTeamRatingChangeForTeam(GetOtherTeam(winner), loser_change);
@@ -755,6 +758,8 @@ void BattleGround::EndBattleGround(Team winner)
         {
             plr->ResurrectPlayer(1.0f);
             plr->SpawnCorpseBones();
+            sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerRevive(*plr, REVIVE_BATTLEGROUND),
+                                                                        &EventListenerPlayerDeathState::EventPlayerRevived);
         }
         else
         {
@@ -775,13 +780,18 @@ void BattleGround::EndBattleGround(Team winner)
                 loser_arena_team->MemberLost(plr,winner_rating);
         }
 
+        EventInfoPlayerBattleGround eventInfo(*plr, *this);
         if (team == winner)
         {
             RewardMark(plr,ITEM_WINNER_COUNT);
             RewardQuestComplete(plr);
+            sEventSystemMgr(EventListenerPlayerBattleGround).TriggerEvent(eventInfo, &EventListenerPlayerBattleGround::EventPlayerBattleGroundWon);
         }
         else
+        {
             RewardMark(plr,ITEM_LOSER_COUNT);
+            sEventSystemMgr(EventListenerPlayerBattleGround).TriggerEvent(eventInfo, &EventListenerPlayerBattleGround::EventPlayerBattleGroundLost);
+        }
 
         plr->CombatStopWithPets(true);
 
@@ -808,6 +818,15 @@ void BattleGround::EndBattleGround(Team winner)
         winner_arena_team->NotifyStatsChanged();
         loser_arena_team->NotifyStatsChanged();
     }
+
+    ArenaTeam *alliance = NULL, *horde = NULL;
+    if (isArena())
+    {
+        alliance = sObjectMgr.GetArenaTeamById(GetArenaTeamIdForTeam(ALLIANCE));
+        horde = sObjectMgr.GetArenaTeamById(GetArenaTeamIdForTeam(HORDE));
+    }
+    sEventSystemMgr(EventListenerBattleGround).TriggerEvent(EventInfoBattleGroundEnded(*this, winner, winner_change, alliance, horde),
+                                                            &EventListenerBattleGround::EventBattleGroundEnded);
 
     if (winmsg_id)
         SendMessageToAll(winmsg_id, CHAT_MSG_BG_SYSTEM_NEUTRAL);
@@ -1001,6 +1020,8 @@ void BattleGround::RemovePlayerAtLeave(ObjectGuid guid, bool Transport, bool Sen
         {
             plr->ResurrectPlayer(1.0f);
             plr->SpawnCorpseBones();
+            sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerRevive(*plr, REVIVE_BATTLEGROUND),
+                                                                        &EventListenerPlayerDeathState::EventPlayerRevived);
         }
     }
 
@@ -1143,6 +1164,15 @@ void BattleGround::StartBattleGround()
     // This must be done here, because we need to have already invited some players when first BG::Update() method is executed
     // and it doesn't matter if we call StartBattleGround() more times, because m_BattleGrounds is a map and instance id never changes
     sBattleGroundMgr.AddBattleGround(GetInstanceID(), GetTypeID(), this);
+
+    ArenaTeam *alliance = NULL, *horde = NULL;
+    if (isArena())
+    {
+        alliance = sObjectMgr.GetArenaTeamById(GetArenaTeamIdForTeam(ALLIANCE));
+        horde = sObjectMgr.GetArenaTeamById(GetArenaTeamIdForTeam(HORDE));
+    }
+    sEventSystemMgr(EventListenerBattleGround).TriggerEvent(EventInfoBattleGround(*this, alliance, horde),
+                                                            &EventListenerBattleGround::EventBattleGroundStarted);
 }
 
 void BattleGround::AddPlayer(Player *plr)
@@ -1208,6 +1238,9 @@ void BattleGround::AddPlayer(Player *plr)
 
     // Log
     DETAIL_LOG("BATTLEGROUND: Player %s joined the battle.", plr->GetName());
+
+    sEventSystemMgr(EventListenerPlayerBattleGround).TriggerEvent(EventInfoPlayerBattleGround(*plr, *this),
+                                                                  &EventListenerPlayerBattleGround::EventPlayerBattleGroundJoined);
 }
 
 /* this method adds player to his team's bg group, or sets his correct group if player is already in bg group */
@@ -1631,6 +1664,8 @@ void BattleGround::SendYell2ToAll(int32 entry, uint32 language, ObjectGuid guid,
 
 void BattleGround::EndNow()
 {
+    sEventSystemMgr(EventListenerBattleGround).TriggerEvent(EventInfoBattleGroundEnded(*this, 0, 0, NULL, NULL),
+                                                            &EventListenerBattleGround::EventBattleGroundEnded);
     RemoveFromBGFreeSlotQueue();
     SetStatus(STATUS_WAIT_LEAVE);
     SetEndTime(0);

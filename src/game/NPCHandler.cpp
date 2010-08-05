@@ -34,6 +34,7 @@
 #include "Guild.h"
 #include "GuildMgr.h"
 #include "Chat.h"
+#include "EventPlayerDeathStateMgr.h"
 
 enum StableResultCode
 {
@@ -436,6 +437,9 @@ void WorldSession::SendSpiritResurrect()
         _player->GetCamera().UpdateVisibilityForOwner();
         _player->UpdateObjectVisibility();
     }
+
+    sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerRevive(*_player, REVIVE_GRAVEYARD),
+                                                                &EventListenerPlayerDeathState::EventPlayerRevived);
 }
 
 void WorldSession::HandleBinderActivateOpcode( WorldPacket & recv_data )

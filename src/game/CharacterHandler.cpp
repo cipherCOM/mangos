@@ -38,6 +38,7 @@
 #include "Util.h"
 #include "ArenaTeam.h"
 #include "Language.h"
+#include "EventCharacterMgr.h"
 
 // config option SkipCinematics supported values
 enum CinematicsSkipMode
@@ -381,6 +382,8 @@ void WorldSession::HandleCharCreateOpcode( WorldPacket & recv_data )
     std::string IP_str = GetRemoteAddress();
     BASIC_LOG("Account: %d (IP: %s) Create Character:[%s] (guid: %u)", GetAccountId(), IP_str.c_str(), name.c_str(), pNewChar->GetGUIDLow());
     sLog.outChar("Account: %d (IP: %s) Create Character:[%s] (guid: %u)", GetAccountId(), IP_str.c_str(), name.c_str(), pNewChar->GetGUIDLow());
+    sEventSystemMgr(EventListenerCharacter).TriggerEvent(EventInfoCharacter(pNewChar->GetGUIDLow(), name, GetAccountId(), IP_str),
+                                                         &EventListenerCharacter::EventCharacterCreated);
 
     delete pNewChar;                                        // created only to call SaveToDB()
 }
@@ -433,6 +436,8 @@ void WorldSession::HandleCharDeleteOpcode( WorldPacket & recv_data )
     std::string IP_str = GetRemoteAddress();
     BASIC_LOG("Account: %d (IP: %s) Delete Character:[%s] (guid: %u)", GetAccountId(), IP_str.c_str(), name.c_str(), lowguid);
     sLog.outChar("Account: %d (IP: %s) Delete Character:[%s] (guid: %u)", GetAccountId(), IP_str.c_str(), name.c_str(), lowguid);
+    sEventSystemMgr(EventListenerCharacter).TriggerEvent(EventInfoCharacter(lowguid, name, GetAccountId(), IP_str),
+                                                         &EventListenerCharacter::EventCharacterDeleted);
 
     if(sLog.IsOutCharDump())                                // optimize GetPlayerDump call
     {
@@ -690,6 +695,9 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
     std::string IP_str = GetRemoteAddress();
     sLog.outChar("Account: %d (IP: %s) Login Character:[%s] (guid: %u)",
         GetAccountId(), IP_str.c_str(), pCurrChar->GetName(), pCurrChar->GetGUIDLow());
+    sEventSystemMgr(EventListenerCharacter).TriggerEvent(EventInfoCharacter(pCurrChar->GetGUIDLow(), pCurrChar->GetName(),
+                                                                            GetAccountId(), IP_str),
+                                                         &EventListenerCharacter::EventCharacterLogin);
 
     if(!pCurrChar->IsStandState() && !pCurrChar->hasUnitState(UNIT_STAT_STUNNED))
         pCurrChar->SetStandState(UNIT_STAND_STATE_STAND);
@@ -858,6 +866,8 @@ void WorldSession::HandleChangePlayerNameOpcodeCallBack(QueryResult *result, uin
     CharacterDatabase.CommitTransaction();
 
     sLog.outChar("Account: %d (IP: %s) Character:[%s] (guid:%u) Changed name to: %s", session->GetAccountId(), session->GetRemoteAddress().c_str(), oldname.c_str(), guidLow, newname.c_str());
+    sEventSystemMgr(EventListenerCharacter).TriggerEvent(EventInfoCharacterRenamed(guidLow, newname, oldname, session->GetAccountId(), session->GetRemoteAddress()),
+                                                         &EventListenerCharacter::EventCharacterRenamed);
 
     WorldPacket data(SMSG_CHAR_RENAME, 1+8+(newname.size()+1));
     data << uint8(RESPONSE_SUCCESS);

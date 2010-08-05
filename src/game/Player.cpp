@@ -59,6 +59,15 @@
 #include "ScriptMgr.h"
 #include "SocialMgr.h"
 #include "Mail.h"
+#include "EventLootItemMgr.h"
+#include "EventPlayerItemMgr.h"
+#include "EventPlayerLevelMgr.h"
+#include "EventCharacterMgr.h"
+#include "EventPlayerMoveMgr.h"
+#include "EventPlayerMapMgr.h"
+#include "EventPlayerDeathStateMgr.h"
+#include "EventPlayerTradeMgr.h"
+#include "EventPlayerBattleGroundMgr.h"
 
 #include <cmath>
 
@@ -903,7 +912,30 @@ uint32 Player::EnvironmentalDamage(EnviromentalDamage type, uint32 damage)
     data << (uint32)resist; // resist
     SendMessageToSet(&data, true);
 
-    uint32 final_damage = DealDamage(this, damage, NULL, SELF_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+    DamageReasonType reason;
+    switch (type) {
+        case DAMAGE_DROWNING:
+            reason = REASON_DROWNING;
+            break;
+        case DAMAGE_FALL:
+            reason = REASON_FALL;
+            break;
+        case DAMAGE_FALL_TO_VOID:
+            reason = REASON_FALL_TO_VOID;
+            break;
+        case DAMAGE_EXHAUSTED:
+            reason = REASON_EXHAUSTED;
+            break;
+        case DAMAGE_FIRE:
+        case DAMAGE_SLIME:
+        case DAMAGE_LAVA:
+            reason = REASON_ENVIRONMENTAL;
+            break;
+        default:
+            reason = REASON_UNKNOWN;
+            break;
+    }
+    uint32 final_damage = DealDamage(this, damage, NULL, SELF_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false, reason);
 
     if(type==DAMAGE_FALL && !isAlive())                     // DealDamage not apply item durability loss at self damage
     {
@@ -1641,6 +1673,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
     Pet* pet = GetPet();
 
     MapEntry const* mEntry = sMapStore.LookupEntry(mapid);
+    MapEntry const* oldEntry = sMapStore.LookupEntry(GetMapId());
 
     // don't let enter battlegrounds without assigned battleground id (for example through areatrigger)...
     // don't let gm level > 1 either
@@ -1849,6 +1882,13 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
                 GetSession()->SendPacket( &data );
                 SendSavedInstances();
             }
+
+            EventInfoPlayerMap infoMap(*this, mapid, GetMapId());
+            sEventSystemMgr(EventListenerPlayerMap).TriggerEvent(infoMap, &EventListenerPlayerMap::EventPlayerMapChanged);
+            if(oldEntry && oldEntry->IsDungeon())
+                sEventSystemMgr(EventListenerPlayerMap).TriggerEvent(infoMap, &EventListenerPlayerMap::EventPlayerDungeonLeft);
+            if(mEntry && mEntry->IsDungeon())
+                sEventSystemMgr(EventListenerPlayerMap).TriggerEvent(infoMap, &EventListenerPlayerMap::EventPlayerDungeonEntered);
         }
         else
             return false;
@@ -1884,6 +1924,9 @@ void Player::ProcessDelayedOperations()
         SetPower(POWER_ENERGY, GetMaxPower(POWER_ENERGY) );
 
         SpawnCorpseBones();
+
+        sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerRevive(*this, REVIVE_SPELL),
+                                                                    &EventListenerPlayerDeathState::EventPlayerRevived);
     }
 
     if(m_DelayedOperations & DELAYED_SAVE_PLAYER)
@@ -2415,6 +2458,7 @@ void Player::GiveXP(uint32 xp, Unit* victim)
 // Current player experience not update (must be update by caller)
 void Player::GiveLevel(uint32 level)
 {
+    uint32 oldlevel = getLevel();
     if ( level == getLevel() )
         return;
 
@@ -2477,6 +2521,8 @@ void Player::GiveLevel(uint32 level)
     if (MailLevelReward const* mailReward = sObjectMgr.GetMailLevelReward(level,getRaceMask()))
         MailDraft(mailReward->mailTemplateId).SendMailTo(this,MailSender(MAIL_CREATURE,mailReward->senderEntry));
 
+    sEventSystemMgr(EventListenerPlayerLevel).TriggerEvent(EventInfoPlayerLevel(*this, level, level - oldlevel),
+                                                          &EventListenerPlayerLevel::EventPlayerLevelReached);
 }
 
 void Player::UpdateFreeTalentPoints(bool resetIfNeed)
@@ -3611,6 +3657,10 @@ bool Player::resetTalents(bool no_cost)
 
     //FIXME: remove pet before or after unlearn spells? for now after unlearn to allow removing of talent related, pet affecting auras
     RemovePet(PET_SAVE_REAGENTS);
+
+    sEventSystemMgr(EventListenerPlayerLevel).TriggerEvent(EventInfoPlayer(*this),
+                                                           &EventListenerPlayerLevel::EventPlayerTalentsReseted);
+
     return true;
 }
 
@@ -4138,7 +4188,7 @@ void Player::DeleteOldCharacters(uint32 keepDays)
 {
     sLog.outString("Player::DeleteOldChars: Deleting all characters which have been deleted %u days before...", keepDays);
 
-    QueryResult *resultChars = CharacterDatabase.PQuery("SELECT guid, deleteInfos_Account FROM characters WHERE deleteDate IS NOT NULL AND deleteDate < '" UI64FMTD "'", uint64(time(NULL) - time_t(keepDays * DAY)));
+    QueryResult *resultChars = CharacterDatabase.PQuery("SELECT guid, deleteInfos_Account, deleteInfos_Name FROM characters WHERE deleteDate IS NOT NULL AND deleteDate < '" UI64FMTD "'", uint64(time(NULL) - time_t(keepDays * DAY)));
     if (resultChars)
     {
         sLog.outString("Player::DeleteOldChars: Found %u character(s) to delete",uint32(resultChars->GetRowCount()));
@@ -4146,6 +4196,8 @@ void Player::DeleteOldCharacters(uint32 keepDays)
         {
             Field *charFields = resultChars->Fetch();
             ObjectGuid guid = ObjectGuid(HIGHGUID_PLAYER, charFields[0].GetUInt32());
+            sEventSystemMgr(EventListenerCharacter).TriggerEvent(EventInfoCharacter(charFields[0].GetUInt32(), charFields[2].GetCppString(), charFields[1].GetUInt32(), "127.0.0.1"),
+                                         &EventListenerCharacter::EventCharacterDeletedFinally);
             Player::DeleteFromDB(guid, charFields[1].GetUInt32(), true, true);
         } while(resultChars->NextRow());
         delete resultChars;
@@ -4621,6 +4673,8 @@ void Player::RepopAtGraveyard()
     {
         ResurrectPlayer(0.5f);
         SpawnCorpseBones();
+        sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerRevive(*this, REVIVE_OTHER),
+                                                                    &EventListenerPlayerDeathState::EventPlayerRevived);
     }
 
     WorldSafeLocsEntry const *ClosestGrave = NULL;
@@ -6120,7 +6174,7 @@ void Player::RewardReputation(Quest const *pQuest)
         if (!pQuest->RewRepFaction[i])
             continue;
 
-        if (pQuest->RewRepValue[i])           
+        if (pQuest->RewRepValue[i])
         {
             int32 rep = CalculateReputationGain(REPUTATION_SOURCE_QUEST,  pQuest->RewRepValue[i], pQuest->RewRepFaction[i], GetQuestLevelForPlayer(pQuest));
 
@@ -6591,6 +6645,13 @@ void Player::DuelComplete(DuelCompleteType type)
         data << duel->opponent->GetName();
         data << GetName();
         SendMessageToSet(&data,true);
+
+        // Seems illogical but Player object always looses when this function is called
+        // DUEL_WON means only that this duel ended normally =/
+        sEventSystemMgr(EventListenerPlayerBattleGround).TriggerEvent(EventInfoPlayerDuel(*this, *duel->opponent),
+                                                                      &EventListenerPlayerBattleGround::EventPlayerDuelLost);
+        sEventSystemMgr(EventListenerPlayerBattleGround).TriggerEvent(EventInfoPlayerDuel(*duel->opponent, *this),
+                                                                      &EventListenerPlayerBattleGround::EventPlayerDuelWon);
     }
 
     //Remove Duel Flag object
@@ -7516,6 +7577,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
 
     Loot    *loot = 0;
     PermissionTypes permission = ALL_PERMISSION;
+    bool lootGenerated = false;
 
     DEBUG_LOG("Player::SendLoot");
     switch(guid.GetHigh())
@@ -7563,6 +7625,8 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                     go->getFishLoot(loot,this);
 
                 go->SetLootState(GO_ACTIVATED);
+
+                lootGenerated = true;
             }
             break;
         }
@@ -7600,6 +7664,8 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                         item->SetLootState(ITEM_LOOT_CHANGED);
                         break;
                 }
+
+                lootGenerated = true;
             }
             break;
         }
@@ -7625,6 +7691,8 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                 // It may need a better formula
                 // Now it works like this: lvl10: ~6copper, lvl70: ~9silver
                 bones->loot.gold = (uint32)( urand(50, 150) * 0.016f * pow( ((float)pLevel)/5.76f, 2.5f) * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY) );
+
+                lootGenerated = true;
             }
 
             if (bones->lootRecipient != this)
@@ -7667,6 +7735,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                     const uint32 b = urand(0, getLevel()/2);
                     loot->gold = uint32(10 * (a + b) * sWorld.getConfig(CONFIG_FLOAT_RATE_DROP_MONEY));
                     permission = OWNER_PERMISSION;
+                    lootGenerated = true;
                 }
             }
             else
@@ -7715,6 +7784,8 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                                 break;
                         }
                     }
+
+                    lootGenerated = true;
                 }
 
                 // possible only if creature->lootForBody && loot->empty() at spell cast check
@@ -7731,6 +7802,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                             creature->SetUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
 
                         permission = OWNER_PERMISSION;
+                        lootGenerated = true;
                     }
                 }
                 // set group rights only for loot_type != LOOT_SKINNING
@@ -7771,6 +7843,12 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
     }
 
     SetLootGuid(guid);
+
+    if (lootGenerated)
+    {
+        sEventSystemMgr(EventListenerLootItem).TriggerEvent(EventInfoLoot(*loot, guid, loot_type),
+                                                            &EventListenerLootItem::EventLootGenerated);
+    }
 
     // need know for proper finish item loots (internal pre-switch loot type set in different from 3.x code version)
     // in fact this meaning that it send same loot types for interesting cases like 3.x version code (skip pre-3.x client loot type limitaitons)
@@ -9858,7 +9936,7 @@ InventoryResult Player::CanEquipItem( uint8 slot, uint16 &dest, Item *pItem, boo
                     if (!CanDualWield())
                         return EQUIP_ERR_CANT_DUAL_WIELD;
                 }
-                else if (type == INVTYPE_2HWEAPON) 
+                else if (type == INVTYPE_2HWEAPON)
                 {
                     return EQUIP_ERR_CANT_DUAL_WIELD;
                 }
@@ -10260,6 +10338,15 @@ Item* Player::StoreNewItem( ItemPosCountVec const& dest, uint32 item, bool updat
         if(randomPropertyId)
             pItem->SetItemRandomProperties(randomPropertyId);
         pItem = StoreItem( dest, pItem, update );
+
+        sEventSystemMgr(EventListenerPlayerItem).TriggerEvent(EventInfoPlayerItem(*this, *pItem, dest.begin()->pos),
+                                                              &EventListenerPlayerItem::EventPlayerItemReceived);
+        const ItemPrototype *itemProt = pItem->GetProto();
+        if (itemProt && itemProt->Quality > ITEM_QUALITY_NORMAL)
+        { // At least green item
+            sEventSystemMgr(EventListenerPlayerItem).TriggerEvent(EventInfoPlayerItem(*this, *pItem, dest.begin()->pos),
+                                                                  &EventListenerPlayerItem::EventPlayerItemColoredReceived);
+        }
     }
     return pItem;
 }
@@ -10490,9 +10577,14 @@ Item* Player::EquipItem( uint16 pos, Item *pItem, bool update )
 
         ApplyEquipCooldown(pItem2);
 
+        // FIXME: What is this else block for? Not sure but trigger nevertheless
+        sEventSystemMgr(EventListenerPlayerItem).TriggerEvent(EventInfoPlayerItem(*this, *pItem, pos),
+                                                              &EventListenerPlayerItem::EventPlayerItemEquipped);
         return pItem2;
     }
 
+    sEventSystemMgr(EventListenerPlayerItem).TriggerEvent(EventInfoPlayerItem(*this, *pItem, pos),
+                                                          &EventListenerPlayerItem::EventPlayerItemEquipped);
     return pItem;
 }
 
@@ -15164,6 +15256,8 @@ void Player::LoadCorpse()
         {
             //Prevent Dead Player login without corpse
             ResurrectPlayer(0.5f);
+            sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerRevive(*this, REVIVE_OTHER),
+                                                                        &EventListenerPlayerDeathState::EventPlayerRevived);
         }
     }
 }
@@ -15763,6 +15857,9 @@ InstancePlayerBind* Player::BindToInstance(DungeonPersistentState *state, bool p
             if (!load)
                 CharacterDatabase.PExecute("INSERT INTO character_instance (guid, instance, permanent) VALUES ('%u', '%u', '%u')",
                     GetGUIDLow(), state->GetInstanceId(), permanent);
+
+            sEventSystemMgr(EventListenerPlayerMap).TriggerEvent(EventInfoPlayerInstance(*this, *state),
+                                                                 &EventListenerPlayerMap::EventPlayerInstanceBoundPermanent);
         }
 
         if (bind.state != state)
@@ -15780,6 +15877,9 @@ InstancePlayerBind* Player::BindToInstance(DungeonPersistentState *state, bool p
         if (!load)
             DEBUG_LOG("Player::BindToInstance: %s(%d) is now bound to map %d, instance %d, difficulty %d",
                 GetName(), GetGUIDLow(), state->GetMapId(), state->GetInstanceId(), state->GetDifficulty());
+
+        sEventSystemMgr(EventListenerPlayerMap).TriggerEvent(EventInfoPlayerInstance(*this, *state),
+                                                             &EventListenerPlayerMap::EventPlayerInstanceBound);
         return &bind;
     }
     else
@@ -17647,6 +17747,10 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
 
     GetSession()->SendDoFlight(mount_display_id, sourcepath);
 
+    TaxiNodesEntry const* destination = sTaxiNodesStore.LookupEntry(lastnode);
+    sEventSystemMgr(EventListenerPlayerMove).TriggerEvent(EventInfoPlayerMoveFlightPath(*this, *node, *destination, npc),
+                                                          &EventListenerPlayerMove::EventPlayerFlightPathTaken);
+
     return true;
 }
 
@@ -17983,6 +18087,9 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
             TakeExtendedCost(crItem->ExtendedCost, count);
 
         pItem = StoreNewItem(dest, item, true);
+
+        sEventSystemMgr(EventListenerPlayerTrade).TriggerEvent(EventInfoPlayerTradeVendor(*this, *pCreature, *pItem, count),
+                                                               &EventListenerPlayerTrade::EventPlayerVendorTraded);
     }
     else if (IsEquipmentPos(bag, slot))
     {
@@ -18009,6 +18116,9 @@ bool Player::BuyItemFromVendor(ObjectGuid vendorGuid, uint32 item, uint8 count, 
 
         if (pItem)
             AutoUnequipOffhandIfNeed();
+
+        sEventSystemMgr(EventListenerPlayerTrade).TriggerEvent(EventInfoPlayerTradeVendor(*this, *pCreature, *pItem, count),
+                                                               &EventListenerPlayerTrade::EventPlayerVendorTraded);
     }
     else
     {
@@ -18438,6 +18548,9 @@ void Player::LeaveBattleground(bool teleportToEntryPoint)
                 CastSpell(this, 26013, true);               // Deserter
             }
         }
+
+        sEventSystemMgr(EventListenerPlayerBattleGround).TriggerEvent(EventInfoPlayerBattleGround(*this, *bg),
+                                                                      &EventListenerPlayerBattleGround::EventPlayerBattleGroundLeft);
     }
 }
 
@@ -19627,6 +19740,9 @@ void Player::ResurectUsingRequestData()
     SetPower(POWER_ENERGY, GetMaxPower(POWER_ENERGY) );
 
     SpawnCorpseBones();
+
+    sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerRevive(*this, REVIVE_SPELL),
+                                                                &EventListenerPlayerDeathState::EventPlayerRevived);
 }
 
 void Player::SetClientControl(Unit* target, uint8 allowMove)
@@ -20512,6 +20628,14 @@ void Player::SetHomebindToLocation(WorldLocation const& loc, uint32 area_id)
     // update sql homebind
     CharacterDatabase.PExecute("UPDATE character_homebind SET map = '%u', zone = '%u', position_x = '%f', position_y = '%f', position_z = '%f' WHERE guid = '%u'",
         m_homebindMapId, m_homebindAreaId, m_homebindX, m_homebindY, m_homebindZ, GetGUIDLow());
+}
+
+bool Player::TeleportToHomebind(uint32 options)
+{
+    sEventSystemMgr(EventListenerPlayerMove).TriggerEvent(EventInfoPlayerMoveTeleported(*this, TELE_HEARTHSTONE, NULL),
+                                                          &EventListenerPlayerMove::EventPlayerTeleported);
+
+    return TeleportTo(m_homebindMapId, m_homebindX, m_homebindY, m_homebindZ, GetOrientation(), options);
 }
 
 Object* Player::GetObjectByTypeMask(ObjectGuid guid, TypeMask typemask)

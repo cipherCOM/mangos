@@ -40,6 +40,8 @@
 #include "BattleGround.h"
 #include "Pet.h"
 #include "SocialMgr.h"
+#include "EventPlayerMoveMgr.h"
+#include "EventPlayerDeathStateMgr.h"
 
 void WorldSession::HandleRepopRequestOpcode( WorldPacket & recv_data )
 {
@@ -655,6 +657,9 @@ void WorldSession::HandleReclaimCorpseOpcode(WorldPacket &recv_data)
 
     // spawn bones
     GetPlayer()->SpawnCorpseBones();
+
+    sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerRevive(*GetPlayer(), REVIVE_CORPSE),
+                                                                &EventListenerPlayerDeathState::EventPlayerRevived);
 }
 
 void WorldSession::HandleResurrectResponseOpcode(WorldPacket & recv_data)
@@ -796,6 +801,9 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket & recv_data)
             // now we can resurrect player, and then check teleport requirements
             pl->ResurrectPlayer(0.5f);
             pl->SpawnCorpseBones();
+
+            sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerRevive(*pl, REVIVE_INSTANCE),
+                                                                        &EventListenerPlayerDeathState::EventPlayerRevived);
         }
 
         uint32 missingLevel = 0;
@@ -856,6 +864,8 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket & recv_data)
     }
 
     GetPlayer()->TeleportTo(at->target_mapId, at->target_X, at->target_Y, at->target_Z, at->target_Orientation, TELE_TO_NOT_LEAVE_TRANSPORT);
+    sEventSystemMgr(EventListenerPlayerMove).TriggerEvent(EventInfoPlayerMoveTeleported(*pl, TELE_AREATRIGGER, at),
+                                                          &EventListenerPlayerMove::EventPlayerTeleported);
 }
 
 void WorldSession::HandleUpdateAccountData(WorldPacket & recv_data)

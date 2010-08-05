@@ -298,7 +298,7 @@ class BattleGround
         BattleGroundBracketId GetBracketId() const { return m_BracketId; }
         // the instanceId check is also used to determine a bg-template
         // that's why the m_map hack is here..
-        uint32 GetInstanceID()              { return m_Map?GetBgMap()->GetInstanceId():0; }
+        uint32 GetInstanceID() const        { return m_Map?GetBgMap()->GetInstanceId():0; }
         BattleGroundStatus GetStatus() const { return m_Status; }
         uint32 GetClientInstanceID() const  { return m_ClientInstanceID; }
         uint32 GetStartTime() const         { return m_StartTime; }
@@ -376,7 +376,7 @@ class BattleGround
 
         /* Map pointers */
         void SetBgMap(BattleGroundMap* map) { m_Map = map; }
-        BattleGroundMap* GetBgMap()
+        BattleGroundMap* GetBgMap() const
         {
             MANGOS_ASSERT(m_Map);
             return m_Map;

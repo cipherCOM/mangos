@@ -22,6 +22,8 @@
 #include "ArenaTeam.h"
 #include "World.h"
 #include "Player.h"
+#include "EventArenaTeamMgr.h"
+#include "EventPlayerBattleGroundMgr.h"
 
 void ArenaTeamMember::ModifyPersonalRating(Player* plr, int32 mod, uint32 slot)
 {
@@ -98,6 +100,8 @@ bool ArenaTeam::Create(ObjectGuid captainGuid, ArenaType type, std::string arena
     CharacterDatabase.CommitTransaction();
 
     AddMember(m_CaptainGuid);
+    sEventSystemMgr(EventListenerArenaTeam).TriggerEvent(EventInfoArenaTeamStatus(*this, sObjectMgr.GetPlayer(captainGuid)),
+                                    &EventListenerArenaTeam::EventArenaTeamCreated);
     return true;
 }
 
@@ -186,6 +190,10 @@ bool ArenaTeam::AddMember(ObjectGuid playerGuid)
         if (m_CaptainGuid != playerGuid)
             pl->SetArenaTeamInfoField(GetSlot(), ARENA_TEAM_MEMBER, 1);
     }
+
+    sEventSystemMgr(EventListenerPlayerBattleGround).TriggerEvent(EventInfoPlayerArenaTeam(playerGuid, *this),
+                                                                  &EventListenerPlayerBattleGround::EventPlayerArenaTeamJoined);
+
     return true;
 }
 
@@ -322,6 +330,9 @@ void ArenaTeam::DelMember(ObjectGuid guid)
     }
 
     CharacterDatabase.PExecute("DELETE FROM arena_team_member WHERE arenateamid = '%u' AND guid = '%u'", GetId(), guid.GetCounter());
+
+    sEventSystemMgr(EventListenerPlayerBattleGround).TriggerEvent(EventInfoPlayerArenaTeam(guid, *this),
+                                                                  &EventListenerPlayerBattleGround::EventPlayerArenaTeamLeft);
 }
 
 void ArenaTeam::Disband(WorldSession *session)
@@ -332,6 +343,9 @@ void ArenaTeam::Disband(WorldSession *session)
         // probably only 1 string required...
         BroadcastEvent(ERR_ARENA_TEAM_DISBANDED_S, session->GetPlayerName(), GetName().c_str());
     }
+
+    sEventSystemMgr(EventListenerArenaTeam).TriggerEvent(EventInfoArenaTeamStatus(*this, session->GetPlayer()),
+                                    &EventListenerArenaTeam::EventArenaTeamDisbanded);
 
     while (!m_members.empty())
     {
@@ -598,6 +612,9 @@ void ArenaTeam::FinishGame(int32 mod)
         if (i->second->GetType() == this->m_Type && i->second->GetStats().rating > m_stats.rating)
             ++m_stats.rank;
     }
+
+    sEventSystemMgr(EventListenerArenaTeam).TriggerEvent(EventInfoArenaTeamRating(*this, mod),
+                                                         &EventListenerArenaTeam::EventArenaTeamRatingGained);
 }
 
 int32 ArenaTeam::WonAgainst(uint32 againstRating)

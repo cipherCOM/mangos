@@ -33,6 +33,7 @@
 #include "Language.h"
 #include "ScriptMgr.h"
 #include "World.h"
+#include "EventPlayerDeathStateMgr.h"
 
 void WorldSession::HandleBattlemasterHelloOpcode(WorldPacket & recv_data)
 {
@@ -406,6 +407,8 @@ void WorldSession::HandleBattleFieldPortOpcode( WorldPacket &recv_data )
             {
                 _player->ResurrectPlayer(1.0f);
                 _player->SpawnCorpseBones();
+                sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerRevive(*_player, REVIVE_BATTLEGROUND),
+                                                                            &EventListenerPlayerDeathState::EventPlayerRevived);
             }
             // stop taxi flight at port
             if (_player->IsTaxiFlying())

@@ -29,6 +29,8 @@
 #include "WaypointMovementGenerator.h"
 #include "MapPersistentStateMgr.h"
 #include "ObjectMgr.h"
+#include "EventPlayerMoveMgr.h"
+#include "EventPlayerDeathStateMgr.h"
 
 void WorldSession::HandleMoveWorldportAckOpcode( WorldPacket & /*recv_data*/ )
 {
@@ -281,6 +283,10 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
     data << mover->GetPackGUID();             // write guid
     movementInfo.Write(data);                               // write data
     mover->SendMessageToSetExcept(&data, _player);
+
+    if(plMover)
+        sEventSystemMgr(EventListenerPlayerMove).TriggerEvent(EventInfoPlayerMoveType(*plMover, opcode),
+                                                              &EventListenerPlayerMove::EventPlayerMoved);
 }
 
 void WorldSession::HandleForceSpeedChangeAckOpcodes(WorldPacket &recv_data)

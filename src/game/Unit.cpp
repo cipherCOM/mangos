@@ -49,6 +49,9 @@
 #include "DBCStores.h"
 #include "VMapFactory.h"
 #include "MovementGenerator.h"
+#include "EventBossMgr.h"
+#include "EventPlayerDeathStateMgr.h"
+#include "EventPlayerKillMgr.h"
 
 #include <math.h>
 #include <stdarg.h>
@@ -536,7 +539,7 @@ void Unit::DealDamageMods(Unit *pVictim, uint32 &damage, uint32* absorb)
         *absorb += (originalDamage - damage);
 }
 
-uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const *spellProto, bool durabilityLoss)
+uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const *spellProto, bool durabilityLoss, DamageReasonType reason)
 {
     // remove affects from victim (including from 0 damage and DoTs)
     if(pVictim != this)
@@ -895,6 +898,32 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
                 if (BattleGround *bg = player_tap->GetBattleGround())
                     bg->HandleKillUnit((Creature*)pVictim, player_tap);
         }
+
+        if(pVictim->GetTypeId() == TYPEID_PLAYER)
+            sEventSystemMgr(EventListenerPlayerDeathState).TriggerEvent(EventInfoPlayerDeath(*(Player*)pVictim, reason),
+                                                                        &EventListenerPlayerDeathState::EventPlayerDied);
+
+        if (pVictim->GetTypeId() == TYPEID_PLAYER)
+        {
+            if (GetTypeId() == TYPEID_PLAYER)
+            { // PvP situation
+                sEventSystemMgr(EventListenerPlayerKill).TriggerEvent(EventInfoPlayerKill(*(Player*)this, *pVictim),
+                                                                      &EventListenerPlayerKill::EventPlayerKilledOtherPlayer);
+                sEventSystemMgr(EventListenerPlayerKill).TriggerEvent(EventInfoPlayerKill(*(Player*)pVictim, *this),
+                                                                      &EventListenerPlayerKill::EventPlayerKilledByPlayer);
+            }
+            else
+            { // PvE situation
+                sEventSystemMgr(EventListenerPlayerKill).TriggerEvent(EventInfoPlayerKill(*(Player*)pVictim, *this),
+                                                                      &EventListenerPlayerKill::EventPlayerKilledByCreature);
+            }
+        }
+        else if (GetTypeId() == TYPEID_PLAYER)
+        { // EvP situation
+            sEventSystemMgr(EventListenerPlayerKill).TriggerEvent(EventInfoPlayerKill(*(Player*)this, *pVictim),
+                                                                  &EventListenerPlayerKill::EventPlayerKilledOtherCreature);
+        }
+
     }
     else                                                    // if (health <= damage)
     {
@@ -1361,7 +1390,7 @@ void Unit::DealSpellDamage(SpellNonMeleeDamage *damageInfo, bool durabilityLoss)
 
     // Call default DealDamage (send critical in hit info for threat calculation)
     CleanDamage cleanDamage(0, BASE_ATTACK, damageInfo->HitInfo & SPELL_HIT_TYPE_CRIT ? MELEE_HIT_CRIT : MELEE_HIT_NORMAL);
-    DealDamage(pVictim, damageInfo->damage, &cleanDamage, SPELL_DIRECT_DAMAGE, damageInfo->schoolMask, spellProto, durabilityLoss);
+    DealDamage(pVictim, damageInfo->damage, &cleanDamage, SPELL_DIRECT_DAMAGE, damageInfo->schoolMask, spellProto, durabilityLoss, REASON_SPELL);
 }
 
 //TODO for melee need create structure as in
@@ -1677,7 +1706,7 @@ void Unit::DealMeleeDamage(CalcDamageInfo *damageInfo, bool durabilityLoss)
 
     // Call default DealDamage
     CleanDamage cleanDamage(damageInfo->cleanDamage,damageInfo->attackType,damageInfo->hitOutCome);
-    DealDamage(pVictim, damageInfo->damage, &cleanDamage, DIRECT_DAMAGE, damageInfo->damageSchoolMask, NULL, durabilityLoss);
+    DealDamage(pVictim, damageInfo->damage, &cleanDamage, DIRECT_DAMAGE, damageInfo->damageSchoolMask, NULL, durabilityLoss, REASON_MELEE);
 
     // If this is a creature and it attacks from behind it has a probability to daze it's victim
     if( (damageInfo->hitOutCome==MELEE_HIT_CRIT || damageInfo->hitOutCome==MELEE_HIT_CRUSHING || damageInfo->hitOutCome==MELEE_HIT_NORMAL || damageInfo->hitOutCome==MELEE_HIT_GLANCING) &&
@@ -1748,7 +1777,7 @@ void Unit::DealMeleeDamage(CalcDamageInfo *damageInfo, bool durabilityLoss)
                data << uint32(i_spellProto->SchoolMask);
                pVictim->SendMessageToSet(&data, true );
 
-               pVictim->DealDamage(this, damage, 0, SPELL_DIRECT_DAMAGE, GetSpellSchoolMask(i_spellProto), i_spellProto, true);
+               pVictim->DealDamage(this, damage, 0, SPELL_DIRECT_DAMAGE, GetSpellSchoolMask(i_spellProto), i_spellProto, true, REASON_MELEE);
 
                i = vDamageShields.begin();
            }
@@ -2097,7 +2126,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, SpellSchoolMask schoolM
             pCaster->SendSpellNonMeleeDamageLog(caster, (*i)->GetSpellProto()->Id, splitted, schoolMask, splitted_absorb, 0, false, 0, false);
 
             CleanDamage cleanDamage = CleanDamage(splitted, BASE_ATTACK, MELEE_HIT_NORMAL);
-            pCaster->DealDamage(caster, splitted, &cleanDamage, DIRECT_DAMAGE, schoolMask, (*i)->GetSpellProto(), false);
+            pCaster->DealDamage(caster, splitted, &cleanDamage, DIRECT_DAMAGE, schoolMask, (*i)->GetSpellProto(), false, REASON_SPELL);
         }
 
         AuraList const& vSplitDamagePct = GetAurasByType(SPELL_AURA_SPLIT_DAMAGE_PCT);
@@ -2124,7 +2153,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, SpellSchoolMask schoolM
             pCaster->SendSpellNonMeleeDamageLog(caster, (*i)->GetSpellProto()->Id, splitted, schoolMask, split_absorb, 0, false, 0, false);
 
             CleanDamage cleanDamage = CleanDamage(splitted, BASE_ATTACK, MELEE_HIT_NORMAL);
-            pCaster->DealDamage(caster, splitted, &cleanDamage, DIRECT_DAMAGE, schoolMask, (*i)->GetSpellProto(), false);
+            pCaster->DealDamage(caster, splitted, &cleanDamage, DIRECT_DAMAGE, schoolMask, (*i)->GetSpellProto(), false, REASON_SPELL);
         }
     }
 
@@ -5967,7 +5996,7 @@ bool Unit::IsSpellCrit(Unit *pVictim, SpellEntry const *spellProto, SpellSchoolM
                         continue;
                     switch((*i)->GetModifier()->m_miscvalue)
                     {
-                        // Shatter 
+                        // Shatter
                         case 849: if (pVictim->isFrozen()) crit_chance+= 10.0f; break;
                         case 910: if (pVictim->isFrozen()) crit_chance+= 20.0f; break;
                         case 911: if (pVictim->isFrozen()) crit_chance+= 30.0f; break;
@@ -6789,6 +6818,10 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
 
         if (InstanceData* mapInstance = GetInstanceData())
             mapInstance->OnCreatureEnterCombat(pCreature);
+
+        if(pCreature->GetCreatureInfo()->rank == 3) // Creature is a World Boss
+            sEventSystemMgr(EventListenerBoss).TriggerEvent(EventInfoBoss(*pCreature),
+                                                            &EventListenerBoss::EventBossAggroed);
     }
 }
 
@@ -7702,6 +7735,10 @@ bool Unit::SelectHostileTarget()
 
     if (InstanceData* mapInstance = GetInstanceData())
         mapInstance->OnCreatureEvade((Creature*)this);
+
+    if (((Creature*)this)->GetCreatureInfo()->rank == 3) // Creature is a World Boss
+        sEventSystemMgr(EventListenerBoss).TriggerEvent(EventInfoBoss(*((Creature*)this)),
+                                                        &EventListenerBoss::EventBossEvaded);
 
     return false;
 }

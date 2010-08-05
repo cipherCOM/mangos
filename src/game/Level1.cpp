@@ -37,6 +37,7 @@
 #ifdef _DEBUG_VMAPS
 #include "VMapFactory.h"
 #endif
+#include "EventPlayerMoveMgr.h"
 
 //-----------------------Npc Commands-----------------------
 bool ChatHandler::HandleNpcSayCommand(char* args)
@@ -1978,6 +1979,8 @@ bool ChatHandler::HandleGoHelper( Player* player, uint32 mapid, float x, float y
         player->SaveRecallPosition();
 
     player->TeleportTo(mapid, x, y, z, ort);
+    sEventSystemMgr(EventListenerPlayerMove).TriggerEvent(EventInfoPlayerMoveTeleported(*player, TELE_COMMAND, NULL),
+                                                          &EventListenerPlayerMove::EventPlayerTeleported);
 
     return true;
 }

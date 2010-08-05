@@ -27,7 +27,7 @@
 #include "Timer.h"
 #include "MapManager.h"
 #include "BattleGroundMgr.h"
-
+#include "EventServerMgr.h"
 #include "Database/DatabaseEnv.h"
 
 #define WORLD_SLEEP_CONST 50
@@ -49,6 +49,8 @@ void WorldRunnable::run()
 
     uint32 prevSleepTime = 0;                               // used for balanced full tick time length near WORLD_SLEEP_CONST
 
+    sEventSystemMgr(EventListenerServer).TriggerEvent(EventInfoServer(SHUTDOWN_EXIT_CODE),
+                                                      &EventListenerServer::EventServerStarted);
     ///- While we have not World::m_stopEvent, update the world
     while (!World::IsStopped())
     {
@@ -77,6 +79,8 @@ void WorldRunnable::run()
             while (m_ServiceStatus == 2) Sleep(1000);
         #endif
     }
+    sEventSystemMgr(EventListenerServer).TriggerEvent(EventInfoServer(ShutdownExitCode(World::GetExitCode())),
+                                                      &EventListenerServer::EventServerStopped);
 
     sWorld.KickAll();                                       // save and kick all players
     sWorld.UpdateSessions( 1 );                             // real players unload required UpdateSessions call
