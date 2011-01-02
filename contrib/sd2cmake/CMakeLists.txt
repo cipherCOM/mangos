@@ -76,39 +76,31 @@ if(NOT ACE_USE_EXTERNAL)
 # add_dependencies(mangosscript ace)
 endif()
 
-set(mangosscript_LINK_FLAGS "")
 if(UNIX)
-  set(mangosscript_LINK_FLAGS "-pthread ${mangosscript_LINK_FLAGS}")
-endif()
-if(APPLE)
-  set(mangosscript_LINK_FLAGS "-framework Carbon ${mangosscript_LINK_FLAGS}")
-  # Needed for the linking because of the missing symbols
-  set(mangosscript_LINK_FLAGS "-Wl,-undefined -Wl,dynamic_lookup ${mangosscript_LINK_FLAGS}")
-endif()
+  set(mangosscript_LINK_FLAGS "-pthread")
+  if(APPLE)
+    set(mangosscript_LINK_FLAGS "-framework Carbon ${mangosscript_LINK_FLAGS}")
+    # Needed for the linking because of the missing symbols
+    set(mangosscript_LINK_FLAGS "-Wl,-undefined -Wl,dynamic_lookup ${mangosscript_LINK_FLAGS}")
+  endif()
 
-set(mangosscript_PROPERTIES "")
-if(APPLE)
+  if(APPLE)
+    set(mangosscript_PROPERTIES INSTALL_NAME_DIR "${LIBS_DIR}")
+  else()
+    set(mangosscript_PROPERTIES INSTALL_RPATH ${LIBS_DIR})
+  endif()
+
+  # Run out of build tree
   set(mangosscript_PROPERTIES
     ${mangosscript_PROPERTIES}
-    INSTALL_NAME_DIR "${LIBS_DIR}"
+    BUILD_WITH_INSTALL_RPATH OFF
   )
-elseif(UNIX)
-  set(mangosscript_PROPERTIES
+
+  set_target_properties(mangosscript PROPERTIES
+    LINK_FLAGS ${mangosscript_LINK_FLAGS}
     ${mangosscript_PROPERTIES}
-    INSTALL_RPATH ${LIBS_DIR}
   )
 endif()
-
-# Run out of build tree
-set(mangosscript_PROPERTIES
-  ${mangosscript_PROPERTIES}
-  BUILD_WITH_INSTALL_RPATH OFF
-)
-
-set_target_properties(mangosscript PROPERTIES
-  LINK_FLAGS ${mangosscript_LINK_FLAGS}
-  ${mangosscript_PROPERTIES}
-)
 
 # Because size for linker is to big - seriously ?!
 if(WIN32)
