@@ -52,12 +52,6 @@ if(WIN32)
   endif()
 endif()
 
-if(APPLE)
-  target_link_libraries(mangosscript
-    ${OSX_LIBS}
-  )
-endif()
-
 if(UNIX)
   set(mangosscript_LINK_FLAGS "-pthread")
   if(APPLE)

@@ -301,11 +301,6 @@ endif()
 
 message("")
 
-# Little tweak for OS X
-if(APPLE)
-  set(OSX_LIBS /opt/local/lib/libcrypto.dylib)
-endif()
-
 # Some small tweaks for Visual Studio 7 and above.
 if(MSVC)
   # Mark 32 bit executables large address aware so they can use > 2GB address space

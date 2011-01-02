@@ -77,6 +77,21 @@ else( OPENSSL_INCLUDE_DIR AND OPENSSL_LIBRARIES )
   )
   endif( WIN32 )
 
+  if( UNIX )
+    find_library(OPENSSL_EXTRA_LIBRARIES
+      NAMES
+        crypto
+      PATHS
+        /usr/lib
+        /usr/lib/ssl
+        /usr/local/lib
+        /usr/local/lib/ssl
+        /usr/local/ssl/lib
+        ${TMP_OPENSSL_LIBRARIES}
+      DOC "if more libraries are necessary to link in a OpenSSL client, specify them here."
+    )
+  endif()
+
   if( OPENSSL_LIBRARIES )
     if( OPENSSL_INCLUDE_DIR )
       set( OPENSSL_FOUND 1 )

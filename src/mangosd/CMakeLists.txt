@@ -69,13 +69,8 @@ if(UNIX)
   target_link_libraries(${EXECUTABLE_NAME}
     ${MYSQL_LIBRARY}
     ${OPENSSL_LIBRARIES}
+    ${OPENSSL_EXTRA_LIBRARIES}
     ${ZLIB_LIBRARIES}
-  )
-endif()
-
-if(APPLE)
-  target_link_libraries(${EXECUTABLE_NAME}
-    ${OSX_LIBS}
   )
 endif()
 
