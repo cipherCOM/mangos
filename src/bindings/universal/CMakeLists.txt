@@ -78,7 +78,7 @@ elseif(UNIX)
   set(mangosscript_PROPERTIES
     ${mangosscript_PROPERTIES}
     INSTALL_RPATH ${LIBS_DIR}
-  ) 
+  )
 endif()
 
 # Run out of build tree
@@ -97,4 +97,3 @@ install(TARGETS mangosscript
   LIBRARY DESTINATION ${LIBS_DIR}
   RUNTIME DESTINATION ${LIBS_DIR}
 )
-

@@ -1,6 +1,6 @@
 #
 # Find the OpenSSL client includes and library
-# 
+#
 
 # This module defines
 # OPENSSL_INCLUDE_DIR, where to find openssl.h

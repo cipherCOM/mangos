@@ -20,7 +20,7 @@
 if(WIN32)
   link_directories(
     ${CMAKE_BINARY_DIR}/src/mangosd/${CMAKE_CFG_INTDIR}
-  )   
+  )
   include_directories(
     ${CMAKE_SOURCE_DIR}/dep/include # For Win32
   )

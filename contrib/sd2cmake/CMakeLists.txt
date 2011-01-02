@@ -96,7 +96,7 @@ elseif(UNIX)
   set(mangosscript_PROPERTIES
     ${mangosscript_PROPERTIES}
     INSTALL_RPATH ${LIBS_DIR}
-  ) 
+  )
 endif()
 
 # Run out of build tree
@@ -114,7 +114,7 @@ set_target_properties(mangosscript PROPERTIES
 if(WIN32)
   set_target_properties(mangosscript PROPERTIES
       LINK_FLAGS_DEBUG "/DEBUG /INCREMENTAL:NO"
-  ) 
+  )
 endif()
 
 ## libtool settings

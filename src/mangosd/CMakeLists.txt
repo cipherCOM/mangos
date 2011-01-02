@@ -61,7 +61,7 @@ if(WIN32)
   if(PLATFORM MATCHES X86)
     target_link_libraries(${EXECUTABLE_NAME}
       debug ${WIN_DEBUGLIBS}
-    )    
+    )
   endif()
 endif()
 

@@ -18,7 +18,7 @@ FIND_LIBRARY(TERMCAP_LIBRARY NAMES termcap PATH
     /usr/local/lib
     /opt/local/lib
     /usr/lib64
-) 
+)
 
 IF (TERMCAP_INCLUDE_DIR AND TERMCAP_LIBRARY)
     SET(TERMCAP_FOUND TRUE)

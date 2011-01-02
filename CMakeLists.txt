@@ -39,7 +39,7 @@ if(WIN32 AND NOT MSVC)
   message(FATAL_ERROR
     "Under Windows other compiler than Microsoft Visual Studio are not supported."
   )
-endif()  
+endif()
 
 find_package(Platform REQUIRED)
 find_package(Git)
@@ -196,7 +196,7 @@ if(WIN32)
   # zlib is build
 endif()
 
-# *nix-specific packages 
+# *nix-specific packages
 if(UNIX)
   find_package(MySQL REQUIRED)
   find_package(OpenSSL REQUIRED)
@@ -306,7 +306,7 @@ if(APPLE)
   set(OSX_LIBS /opt/local/lib/libcrypto.dylib)
 endif()
 
-# Some small tweaks for Visual Studio 7 and above.  
+# Some small tweaks for Visual Studio 7 and above.
 if(MSVC)
   # Mark 32 bit executables large address aware so they can use > 2GB address space
   if(PLATFORM MATCHES X86)
@@ -343,7 +343,7 @@ add_executable(genrev
 #     XCODE_ATTRIBUTE_ARCHS "i386"
 #   )
 # endif()
-  
+
 get_target_property(GENERATE_EXE genrev LOCATION)
 add_custom_target("revision.h" ALL
   COMMAND ${GENERATE_EXE} ${CMAKE_SOURCE_DIR}
@@ -414,7 +414,7 @@ if(WIN32)
 endif()
 set(DEFINITIONS ${DEFINITIONS} VERSION="${MANGOS_VERSION}" SYSCONFDIR="${CONF_DIR}/")
 
-set_directory_properties(PROPERTIES COMPILE_DEFINITIONS "${DEFINITIONS}") 
+set_directory_properties(PROPERTIES COMPILE_DEFINITIONS "${DEFINITIONS}")
 set_directory_properties(PROPERTIES COMPILE_DEFINITIONS_RELEASE "${DEFINITIONS_RELEASE}")
 set_directory_properties(PROPERTIES COMPILE_DEFINITIONS_DEBUG "${DEFINITIONS_DEBUG}")
 

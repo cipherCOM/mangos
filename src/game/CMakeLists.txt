@@ -71,7 +71,7 @@ add_library(game STATIC
   ${game_SRCS}
 )
 
-target_link_libraries(game 
+target_link_libraries(game
   shared
 )
 
@@ -92,8 +92,3 @@ if(PCH)
     add_precompiled_header(game ${CMAKE_CURRENT_SOURCE_DIR}/pchdef.h)
   endif()
 endif()
-
-
-
-
-

@@ -1,6 +1,6 @@
 #
 # Find the ACE client includes and library
-# 
+#
 
 # This module defines
 # ACE_INCLUDE_DIR, where to find ace.h
@@ -28,7 +28,7 @@ if ( UNIX )
   DOC
     "Specify include-directories that might contain ace.h here."
   )
-  FIND_LIBRARY( ACE_LIBRARIES 
+  FIND_LIBRARY( ACE_LIBRARIES
     NAMES
       ace ACE
     PATHS

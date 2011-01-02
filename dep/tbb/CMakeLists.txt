@@ -62,7 +62,7 @@ elseif(UNIX)
     INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
-    BUILD_COMMAND make -j2 -C <SOURCE_DIR> ${APPLE_BUILD} # export arch="ia32" && 
+    BUILD_COMMAND make -j2 -C <SOURCE_DIR> ${APPLE_BUILD} # export arch="ia32" &&
     INSTALL_COMMAND ""
   )
 else()
