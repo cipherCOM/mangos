@@ -61,7 +61,10 @@ MACRO(_PCH_GET_COMPILE_FLAGS _out_compile_flags)
 
   GET_DIRECTORY_PROPERTY(_directory_flags COMPILE_DEFINITIONS)
   # MESSAGE("_directory_flags ${_directory_flags}" )
-  LIST(APPEND ${_out_compile_flags} ${_directory_flags})
+
+  FOREACH(define ${_directory_flags})
+    LIST(APPEND ${_out_compile_flags} -D${define})
+  ENDFOREACH(define)
   LIST(APPEND ${_out_compile_flags} ${CMAKE_CXX_FLAGS} )
 
   SEPARATE_ARGUMENTS(${_out_compile_flags})
