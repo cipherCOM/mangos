@@ -63,7 +63,7 @@ message(
     PCH: Use precompiled headers
     DEBUG: Debug mode
   To set an option simply type -D<OPTION>=<VALUE> after 'cmake <srcs>'.
-  For example: cmake .. -DDEBUG=1 -DPATH=/opt/mangos\n"
+  For example: cmake .. -DDEBUG=1 -DPREFIX=/opt/mangos\n"
 ) # TODO: PLATFORM: Sets the architecture for compile (X86,X64)
 
 # Override configuration-types - we don't use anything else than debug and release
