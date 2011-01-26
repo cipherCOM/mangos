@@ -75,6 +75,12 @@ target_link_libraries(game
   shared
 )
 
+if(UNIX)
+  target_link_libraries(game
+    dl
+  )
+endif()
+
 add_dependencies(game revision.h)
 if(NOT ACE_USE_EXTERNAL)
   add_dependencies(game ACE_Project)
