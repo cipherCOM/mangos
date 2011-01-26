@@ -54,13 +54,13 @@ MACRO(_PCH_GET_COMPILE_FLAGS _out_compile_flags)
     ## TODO ... ? or does it work out of the box
   ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
-  GET_DIRECTORY_PROPERTY(DIRINC INCLUDE_DIRECTORIES )
+  GET_DIRECTORY_PROPERTY(DIRINC INCLUDE_DIRECTORIES)
   FOREACH(item ${DIRINC})
     LIST(APPEND ${_out_compile_flags} "${_PCH_include_prefix}${item}")
   ENDFOREACH(item)
 
-  GET_DIRECTORY_PROPERTY(_directory_flags DEFINITIONS)
-  #MESSAGE("_directory_flags ${_directory_flags}" )
+  GET_DIRECTORY_PROPERTY(_directory_flags COMPILE_DEFINITIONS)
+  # MESSAGE("_directory_flags ${_directory_flags}" )
   LIST(APPEND ${_out_compile_flags} ${_directory_flags})
   LIST(APPEND ${_out_compile_flags} ${CMAKE_CXX_FLAGS} )
 
