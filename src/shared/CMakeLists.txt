@@ -18,11 +18,6 @@
 
 # Glob only and not recurse, there are other libs for that
 file(GLOB_RECURSE shared_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.cpp *.h)
-# Exclude orphans
-list(REMOVE_ITEM shared_SRCS
-  PacketLog.cpp
-  PacketLog.h
-)
 
 # Exclude Win32 files
 if(NOT WIN32)
