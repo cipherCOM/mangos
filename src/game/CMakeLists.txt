@@ -77,9 +77,12 @@ target_link_libraries(game
 )
 
 if(UNIX)
-  target_link_libraries(game
-    dl
-  )
+  # Both systems don't have libdl and don't need them
+  if (NOT (${CMAKE_SYSTEM_NAME} STREQUAL FreeBSD OR ${CMAKE_SYSTEM_NAME} STREQUAL NetBSD))
+    target_link_libraries(game
+      dl
+    )
+  endif()
 endif()
 
 add_dependencies(game revision.h)

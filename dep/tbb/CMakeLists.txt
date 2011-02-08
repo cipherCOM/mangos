@@ -54,16 +54,23 @@ if(WIN32 AND MSVC)
   )
 elseif(UNIX)
   if(APPLE)
-    set(APPLE_BUILD && cd <SOURCE_DIR>/build/libs_release && install_name_tool -id "<INSTALL_DIR>/lib/libtbb.dylib" libtbb.dylib && install_name_tool -id "<INSTALL_DIR>/lib/libtbbmalloc.dylib" libtbbmalloc.dylib && cd <SOURCE_DIR>/build/libs_debug && install_name_tool -id "<INSTALL_DIR>/lib/libtbb_debug.dylib" libtbb_debug.dylib && install_name_tool -id "<INSTALL_DIR>/lib/libtbbmalloc_debug.dylib" libtbbmalloc_debug.dylib)
+    set(APPLE_BUILD cd <SOURCE_DIR>/build/libs_release && install_name_tool -id "<INSTALL_DIR>/lib/libtbb.dylib" libtbb.dylib && install_name_tool -id "<INSTALL_DIR>/lib/libtbbmalloc.dylib" libtbbmalloc.dylib && cd <SOURCE_DIR>/build/libs_debug && install_name_tool -id "<INSTALL_DIR>/lib/libtbb_debug.dylib" libtbb_debug.dylib && install_name_tool -id "<INSTALL_DIR>/lib/libtbbmalloc_debug.dylib" libtbbmalloc_debug.dylib)
   endif()
+
+  if(${CMAKE_BUILD_TOOL} STREQUAL gmake)
+    set(TBB_BUILD_TOOL gmake)
+  else()
+    set(TBB_BUILD_TOOL make)
+  endif()
+
   ExternalProject_Add(TBB_Project
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}
     BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}
     INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
     DOWNLOAD_COMMAND ""
     CONFIGURE_COMMAND ""
-    BUILD_COMMAND make -j2 -C <SOURCE_DIR> ${APPLE_BUILD} # export arch="ia32" &&
-    INSTALL_COMMAND ""
+    BUILD_COMMAND ${TBB_BUILD_TOOL} -j2 -C <SOURCE_DIR> # export arch="ia32" &&
+    INSTALL_COMMAND ${APPLE_BUILD}
   )
 else()
   message(FATAL_ERROR
