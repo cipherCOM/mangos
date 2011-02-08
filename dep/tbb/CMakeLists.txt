@@ -60,7 +60,7 @@ elseif(UNIX)
     set(APPLE_BUILD cd .)
   endif()
 
-  if(${CMAKE_BUILD_TOOL} STREQUAL gmake)
+  if(CMAKE_BUILD_TOOL MATCHES "/gmake")
     set(TBB_BUILD_TOOL gmake)
   else()
     set(TBB_BUILD_TOOL make)

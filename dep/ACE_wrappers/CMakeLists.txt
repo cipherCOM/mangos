@@ -56,7 +56,7 @@ if(WIN32 AND MSVC)
     ALWAYS 0
   )
 elseif(UNIX)
-  if(${CMAKE_BUILD_TOOL} STREQUAL gmake)
+  if(CMAKE_BUILD_TOOL MATCHES "/gmake")
     set(ACE_BUILD_TOOL gmake)
   else()
     set(ACE_BUILD_TOOL make)
