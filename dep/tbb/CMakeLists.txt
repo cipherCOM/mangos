@@ -55,6 +55,9 @@ if(WIN32 AND MSVC)
 elseif(UNIX)
   if(APPLE)
     set(APPLE_BUILD cd <SOURCE_DIR>/build/libs_release && install_name_tool -id "<INSTALL_DIR>/lib/libtbb.dylib" libtbb.dylib && install_name_tool -id "<INSTALL_DIR>/lib/libtbbmalloc.dylib" libtbbmalloc.dylib && cd <SOURCE_DIR>/build/libs_debug && install_name_tool -id "<INSTALL_DIR>/lib/libtbb_debug.dylib" libtbb_debug.dylib && install_name_tool -id "<INSTALL_DIR>/lib/libtbbmalloc_debug.dylib" libtbbmalloc_debug.dylib)
+  else()
+    # Do nothing, but really 'nothing' makes infinite loops on Debian
+    set(APPLE_BUILD cd .)
   endif()
 
   if(${CMAKE_BUILD_TOOL} STREQUAL gmake)
