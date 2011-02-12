@@ -10,48 +10,27 @@
 # Normal rules
 #
 .*
-*.o
-*.o.*
-*.a
-*.so
-*.so.dbg
-*.bin
-*.gz
+!.empty
 
 #
 # Top-level generic files
 #
+bin
+build
 tags
 TAGS
-INSTALL
 !.gitignore
 
 #
 # Build generated files
 #
-aclocal.m4
 autom4te.cache
-compile
-config.guess
-config.h.in
-config.log
-config.status
-config.sub
-configure
-depcomp
-libtool
-install-sh
-ltmain.sh
-missing
-stamp-h1
-
-Makefile.in
-Makefile
 
 #
 # Editors / debuggers / other output files
 #
 *~
+!*ac~
 *.bak
 *.orig
 *.patch
@@ -92,9 +71,3 @@ cmake_install.cmake
 #
 # MacOS
 .DS_Store
-
-#
-# Special exceptions
-#
-!dep/ACE_wrappers/ace/ace_message_table.bin
-!dep/tbb/src/Makefile
