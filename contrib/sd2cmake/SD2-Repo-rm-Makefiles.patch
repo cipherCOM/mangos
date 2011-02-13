@@ -1727,7 +1727,7 @@ Index: CMakeLists.txt
 +if(PCH)
 +  if(MSVC OR XCODE)
 +    if(MSVC)
-+      set(script_pch "${CMAKE_CURRENT_SOURCE_DIR}/include/precompiled.cpp")
++      set(mangosscript_pch "${CMAKE_CURRENT_SOURCE_DIR}/include/precompiled.cpp")
 +    endif()
 +    add_native_precompiled_header(mangosscript ${CMAKE_CURRENT_SOURCE_DIR}/include/precompiled.h)
 +  elseif(CMAKE_COMPILER_IS_GNUCXX)
