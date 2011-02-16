@@ -127,6 +127,8 @@ if(PREFIX)
   string(REGEX REPLACE "^~" "$ENV{HOME}" PREFIX ${PREFIX})
   get_filename_component(PREFIX_ABSOLUTE ${PREFIX} ABSOLUTE)
   set(CMAKE_INSTALL_PREFIX ${PREFIX} CACHE PATH "Install path prefix." FORCE)
+else()
+  set(PREFIX ${CMAKE_INSTALL_PREFIX} CACHE PATH "Install path prefix.")
 endif()
 
 set(BIN_DIR ${CMAKE_INSTALL_PREFIX}/bin)
