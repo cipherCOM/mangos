@@ -119,18 +119,15 @@ endif()
 # option(TOOLS "Build tools" 0)
 
 # Set up the install-prefix
+if(CMAKE_INSTALL_PREFIX STREQUAL "/usr/local")
+  get_filename_component(PREFIX_ABSOLUTE "../mangos-server" ABSOLUTE)
+  set(CMAKE_INSTALL_PREFIX ${PREFIX_ABSOLUTE} CACHE PATH "Install path prefix." FORCE)
+endif()
 if(PREFIX)
   string(REGEX REPLACE "^~" "$ENV{HOME}" PREFIX ${PREFIX})
-else()
-  set(PREFIX ${CMAKE_SOURCE_DIR})
-  message(
-    "You probably want to set the PREFIX option. If not set MaNGOS will be installed to ${CMAKE_SOURCE_DIR}."
-  )
+  get_filename_component(PREFIX_ABSOLUTE ${PREFIX} ABSOLUTE)
+  set(CMAKE_INSTALL_PREFIX ${PREFIX} CACHE PATH "Install path prefix." FORCE)
 endif()
-set(CMAKE_INSTALL_PREFIX ${PREFIX} CACHE STRING
-  "Install path prefix, prepended onto install directories."
-  FORCE
-)
 
 set(BIN_DIR ${CMAKE_INSTALL_PREFIX}/bin)
 set(CONF_DIR ${CMAKE_INSTALL_PREFIX}/etc)
