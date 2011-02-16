@@ -1,0 +1,22 @@
+From 932c44873f446155d23c71948fe19fd103b2d68e Mon Sep 17 00:00:00 2001
+From: cipherCOM <github@ciphercom.de>
+Date: Sun, 13 Feb 2011 01:56:42 +0100
+Subject: [PATCH] MaNGOS patch to use ScriptDev2
+
+---
+ src/bindings/CMakeLists.txt |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/src/bindings/CMakeLists.txt b/src/bindings/CMakeLists.txt
+index b78676d..3fa7e0a 100644
+--- a/src/bindings/CMakeLists.txt
++++ b/src/bindings/CMakeLists.txt
+@@ -16,4 +16,4 @@
+ # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ #
+ 
+-# add_subdirectory(universal)
++add_subdirectory(ScriptDev2)
+-- 
+1.7.1
+
